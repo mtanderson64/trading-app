@@ -70,6 +70,7 @@ const UserDropdown = () => {
                     <NavItems />
                 </nav>
             </DropdownMenuContent>
+            {/*video 46:41*/}
         </DropdownMenu>
     )
 }
