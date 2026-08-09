@@ -1,3 +1,5 @@
+// video 1:26:17
+
 export const NAV_ITEMS = [
     { href: '/', label: 'Dashboard' },
     { href: '/search', label: 'Search' },
@@ -54,6 +56,19 @@ export const MARKET_OVERVIEW_WIDGET_CONFIG = {
     belowLineFillColorFallingBottom: 'rgba(41, 98, 255, 0)',
     symbolActiveColor: 'rgba(15, 237, 190, 0.05)', // highlight color for active symbol
     tabs: [
+
+        {
+            title: 'Technology',
+            symbols: [
+                { s: 'NASDAQ:NVDA', d: 'Nvidia' },
+                { s: 'NASDAQ:TSLA', d: 'Tesla' },
+                { s: 'NASDAQ:GOOGL', d: 'Alphabet' },
+                { s: 'NASDAQ:META', d: 'Meta Platforms' },
+                { s: 'NYSE:ORCL', d: 'Oracle Corp' },
+                { s: 'NASDAQ:INTC', d: 'Intel Corp' },
+            ],
+        },
+
         {
             title: 'Financial',
             symbols: [
@@ -65,17 +80,7 @@ export const MARKET_OVERVIEW_WIDGET_CONFIG = {
                 { s: 'NYSE:MA', d: 'Mastercard Incorporated' },
             ],
         },
-        {
-            title: 'Technology',
-            symbols: [
-                { s: 'NASDAQ:NVDA', d: 'Nvidia' },
-                { s: 'NASDAQ:TSLA', d: 'Tesla' },
-                { s: 'NASDAQ:GOOGL', d: 'Alphabet' },
-                { s: 'NASDAQ:FB', d: 'Meta Platforms' },
-                { s: 'NYSE:ORCL', d: 'Oracle Corp' },
-                { s: 'NASDAQ:INTC', d: 'Intel Corp' },
-            ],
-        },
+
         {
             title: 'Services',
             symbols: [
@@ -152,7 +157,7 @@ export const MARKET_DATA_WIDGET_CONFIG = {
                 { name: 'NASDAQ:AAPL', displayName: 'Apple' },
                 { name: 'NASDAQ:GOOGL', displayName: 'Alphabet' },
                 { name: 'NASDAQ:MSFT', displayName: 'Microsoft' },
-                { name: 'NASDAQ:FB', displayName: 'Meta Platforms' },
+                { name: 'NASDAQ:META', displayName: 'Meta Platforms' },
                 { name: 'NYSE:ORCL', displayName: 'Oracle Corp' },
                 { name: 'NASDAQ:INTC', displayName: 'Intel Corp' },
             ],
