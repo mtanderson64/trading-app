@@ -193,6 +193,7 @@
   .select-trigger {
     @apply w-full !h-12 px-3 py-3 text-base border-gray-600 bg-gray-800 text-white rounded-lg focus:!border-yellow-500 focus:ring-0;
   }
+
   .country-select-trigger {
     @apply h-12 px-3 py-3 text-base w-full justify-between font-normal border-gray-600 bg-gray-800 text-gray-400 rounded-lg focus:!border-yellow-500 focus:ring-0;
   }
