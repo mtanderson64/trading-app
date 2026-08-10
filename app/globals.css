@@ -191,7 +191,7 @@
     @apply h-12 px-3 py-3 text-white text-base placeholder:text-gray-500 border-gray-600 bg-gray-800 rounded-lg focus:!border-yellow-500 focus:ring-0;
   }
   .select-trigger {
-    @apply w-full !h-12 px-3 py-3 text-base border-gray-600 bg-gray-800 text-white rounded-lg focus:!border-yellow-500 focus:ring-0;
+    @apply w-full !h-12 px-3 py-3 text-base border-gray-600 bg-gray-800 text-white rounded-lg data-[placeholder]:!text-gray-500 focus:!border-yellow-500 focus:ring-0;
   }
 
   .country-select-trigger {
@@ -205,6 +205,12 @@
   }
   .country-select-item {
     @apply text-white cursor-pointer px-3 py-2 rounded-sm bg-gray-800 hover:!bg-gray-600;
+  }
+  .country-select-list {
+    @apply !bg-gray-800;
+  }
+  .country-select-group {
+    @apply !bg-gray-800 overflow-hidden;
   }
   .footer-link {
     @apply text-gray-400 font-medium hover:text-yellow-400 hover:underline transition-colors;
