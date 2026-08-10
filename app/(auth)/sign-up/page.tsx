@@ -6,6 +6,7 @@ import InputField from "@/components/forms/InputField";
 import SelectField from "@/components/forms/SelectField";
 import {INVESTMENT_GOALS, PREFERRED_INDUSTRIES, RISK_TOLERANCE_OPTIONS} from "@/lib/constants";
 import {CountrySelectField} from "@/components/forms/CountrySelectField";
+import FooterLink from "@/components/forms/FooterLink";
 
 const SignUp = () => {
 
@@ -85,7 +86,7 @@ const SignUp = () => {
                     placeholder="Select your investment goal"
                     options={INVESTMENT_GOALS}
                     control={control}
-                    errors={errors.investmentGoals}
+                    error={errors.investmentGoals}
                     required
                 />
                 <SelectField
@@ -94,7 +95,7 @@ const SignUp = () => {
                     placeholder="Select your risk level"
                     options={RISK_TOLERANCE_OPTIONS}
                     control={control}
-                    errors={errors.riskTolerance}
+                    error={errors.riskTolerance}
                     required
                 />
                 <SelectField
@@ -103,7 +104,7 @@ const SignUp = () => {
                     placeholder="Select your preferred industry"
                     options={PREFERRED_INDUSTRIES}
                     control={control}
-                    errors={errors.preferredIndustry}
+                    error={errors.preferredIndustry}
                     required
                 />
 
@@ -111,6 +112,9 @@ const SignUp = () => {
                 <Button type="submit" disabled={isSubmitting} className="yellow-btn w-full mt-5">
                     {isSubmitting ? 'Creating account' : 'Start Your Investing Journey'}
                 </Button>
+
+                <FooterLink text="Already have an account" linkText="Sign in" href="/sign-in" />
+
             </form>
         </>
     )
