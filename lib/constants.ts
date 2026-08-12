@@ -1,4 +1,4 @@
-// video 1:42:00
+// video 1:51:16
 
 export const NAV_ITEMS = [
     { href: '/', label: 'Dashboard' },
