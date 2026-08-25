@@ -1,9 +1,9 @@
-// video 3:39:54
+// video 4:07:42
 
 export const NAV_ITEMS = [
     { href: '/', label: 'Dashboard' },
     { href: '/search', label: 'Search' },
-    { href: '/watchlist', label: 'Watchlist' },
+ //   { href: '/watchlist', label: 'Watchlist' },
 ];
 
 // Sign-up form select options
@@ -219,7 +219,7 @@ export const BASELINE_WIDGET_CONFIG = (symbol: string) => ({
     hide_legend: false,
     hide_volume: false,
     hotlist: false,
-    interval: 'D',
+    interval: 'M',
     locale: 'en',
     save_image: false,
     style: 10,
