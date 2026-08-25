@@ -3,6 +3,7 @@
 import {auth} from "@/lib/better-auth/auth";
 import {inngest} from "@/lib/inngest/client";
 import {headers} from "next/headers";
+import {redirect} from "next/navigation";
 
 export const signUpWithEmail = async ({ email, password, fullName, country, investmentGoals, riskTolerance, preferredIndustry }: SignUpFormData) => {
     try {
@@ -23,6 +24,8 @@ export const signUpWithEmail = async ({ email, password, fullName, country, inve
                     preferredIndustry
                 }
             })
+
+            redirect('/');
         }
 
         return { success: true, data: response }
