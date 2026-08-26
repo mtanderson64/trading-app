@@ -37,14 +37,23 @@ const SignUp = () => {
     const onSubmit = async (data: SignUpFormData) => {
         try {
             const result = await signUpWithEmail(data);
-            if (result.success) router.push('/');
+
+            if (result?.success) {
+                // Force a full navigation so the new session cookie is picked up
+                window.location.href = "/";
+                // (alternative: router.push("/"); router.refresh();)
+            } else {
+                toast.error("Sign up failed", {
+                    description: result?.error || "Failed to create an account",
+                });
+            }
         } catch (e) {
             console.error(e);
-            toast.error('Sign up failed', {
-                description: e instanceof Error ? e.message : 'Failed to create an account'
-            })
+            toast.error("Sign up failed", {
+                description: e instanceof Error ? e.message : "Failed to create an account",
+            });
         }
-    }
+    };
 
     return (
         <>
