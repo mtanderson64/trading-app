@@ -1,5 +1,7 @@
 // video 4:07:42
 
+// INNGEST_DEV=1
+
 export const NAV_ITEMS = [
     { href: '/', label: 'Dashboard' },
     { href: '/search', label: 'Search' },
