@@ -23,8 +23,6 @@ export const signUpWithEmail = async ({ email, password, fullName, country, inve
                     preferredIndustry
                 }
             })
-
-            redirect('/');
         }
 
         return { success: true, data: response }
