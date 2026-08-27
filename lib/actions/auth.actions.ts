@@ -1,36 +1,52 @@
 'use server';
 
-import {auth} from "@/lib/better-auth/auth";
-import {inngest} from "@/lib/inngest/client";
-import {headers} from "next/headers";
+import { auth } from "@/lib/better-auth/auth";
+import { inngest } from "@/lib/inngest/client";
+import { headers } from "next/headers";
 
-export const signUpWithEmail = async ({ email, password, fullName, country, investmentGoals, riskTolerance, preferredIndustry }: SignUpFormData) => {
+export const signUpWithEmail = async ({
+                                          email,
+                                          password,
+                                          fullName,
+                                          country,
+                                          investmentGoals,
+                                          riskTolerance,
+                                          preferredIndustry,
+                                      }: SignUpFormData) => {
     try {
         const response = await auth.api.signUpEmail({
             body: { email, password, name: fullName },
-            headers: await headers()
-        })
+            headers: await headers(),
+        });
 
-        if(response) {
-            await inngest.send({
-                name: 'app/user.created',
-                data: {
-                    email,
-                    name: fullName,
-                    country,
-                    investmentGoals,
-                    riskTolerance,
-                    preferredIndustry
-                }
-            })
+        console.log("SIGNUP AUTH RESPONSE →", !!response);
+
+        if (response) {
+            try {
+                await inngest.send({
+                    name: "app/user.created",
+                    data: {
+                        email,
+                        name: fullName,
+                        country,
+                        investmentGoals,
+                        riskTolerance,
+                        preferredIndustry,
+                    },
+                });
+                console.log("INNGEST SEND → ok");
+            } catch (inngestError) {
+                console.error("INNGEST SEND FAILED →", inngestError);
+                // do NOT fail signup because of Inngest
+            }
         }
 
-        return { success: true, data: response }
+        return { success: true, data: response };
     } catch (e) {
-        console.log('Sign up failed', e)
-        return { success: false, error: 'Sign up failed' }
+        console.error("SIGNUP OUTER CATCH →", e);
+        return { success: false, error: "Sign up failed" };
     }
-}
+};
 
 export const signInWithEmail = async ({ email, password }: SignInFormData) => {
     try {
