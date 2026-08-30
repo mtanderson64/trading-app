@@ -172,7 +172,7 @@ export const sendCustomUpdateSummary = inngest.createFunction(
         triggers: [
             // Runs every day at 7:58 PM America/Chicago.
             // Automatically handles CST/CDT.
-            { cron: "TZ=America/Chicago 10 20 * * *" },
+            { cron: "TZ=America/Chicago 10 15 * * *" },
         ],
     },
     async ({ step }) => {
