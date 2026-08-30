@@ -168,79 +168,140 @@ export const sendDailyNewsSummary = inngest.createFunction(
 
 export const sendCustomUpdateSummary = inngest.createFunction(
     {
-        id: "custom-update", // or rename to "portfolio-projections"
+        id: "daily-portfolio-projections",
         triggers: [
-            { event: "app/send.daily.news" },
-            { cron: "58 19 * * *" },
+            // Runs every day at 7:58 PM America/Chicago.
+            // Automatically handles CST/CDT.
+            { cron: "TZ=America/Chicago 10 20 * * *" },
         ],
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async ({ step }: { step: any }) => {
-        // Step #1: Get all users for delivery
-        const users = await step.run("get-all-users", getAllUsersForNewsEmail);
+    async ({ step }) => {
+        // Step 1: Get all users who should receive the email.
+        const users = await step.run(
+            "get-all-users",
+            getAllUsersForNewsEmail
+        );
 
-        if (!users || users.length === 0)
-            return { success: false, message: "No users found" };
+        if (!users || users.length === 0) {
+            return {
+                success: false,
+                message: "No users found",
+            };
+        }
 
-        // Step #2: Ask Gemini for the two required tables
-        const newsContent = await step.run("generate-projections", async () => {
-            const prompt = `
-You are a financial analyst. Answer ONLY with two concise Markdown tables. No other text, disclaimers, or commentary.
+        // Step 2: Generate the portfolio projections once.
+        const newsContent = await step.run(
+            "generate-projections",
+            async () => {
+                const prompt = `
+You are a financial analyst producing a long-term portfolio projection.
 
-1. Portfolio base-case value (0.4 BTC + 172 SOL + 12 MSTR + 20 TSLA + 120 STRK) for 2030, 2035, 2040, 2045.
-   - Account for ~2.5% annual inflation.
-   - Assume reasonable ongoing DCA / corporate accumulation where relevant (especially for MSTR/STRK).
-   - Use a single base-case point estimate per year.
-   - Format exactly:
+Answer ONLY with the two Markdown tables below.
+Do NOT provide commentary, explanations, disclaimers, bullet points, or prose outside the tables.
 
-### Portfolio Base-Case Value
-| Year | Nominal Value |
-|------|---------------|
-| 2030 | ...           |
-| 2035 | ...           |
-| 2040 | ...           |
-| 2045 | ...           |
+IMPORTANT DOLLAR CONVENTION:
+- All values MUST be expressed in CONSTANT 2026 U.S. DOLLARS.
+- Adjust all future values for approximately 2.5% annual inflation.
+- The displayed values therefore represent estimated future purchasing power in 2026 dollars, NOT nominal future dollars.
+- Do not report nominal future-dollar values.
 
-2. Base-case price projections for one share/unit of each asset in 2045 only:
-   - BTC
-   - SOL
-   - MSTR (assume at least 1× mNAV, max 2× mNAV)
-   - TSLA
-   - STRK (MicroStrategy preferred stock)
-   - Format exactly:
+PORTFOLIO:
+- 0.4 BTC
+- 172 SOL
+- 12 MSTR
+- 20 TSLA
+- 120 STRK (MicroStrategy preferred stock)
 
-### 2045 Individual Price Targets (Base Case)
-| Asset | 2045 Price |
-|-------|------------|
-| BTC   | ...        |
-| SOL   | ...        |
-| MSTR  | ...        |
-| TSLA  | ...        |
-| STRK  | ...        |
+TABLE 1:
+Calculate the estimated total portfolio value in CONSTANT 2026 DOLLARS for:
+- 2030
+- 2035
+- 2040
+- 2045
+
+Use a single reasonable BASE-CASE point estimate for each year.
+
+Account for reasonable long-term DCA/capital accumulation where relevant, particularly for MSTR and STRK, but do not assume unrealistic contribution amounts.
+
+TABLE 2:
+Give the BASE-CASE estimated 2045 price of one unit/share of each asset, expressed in CONSTANT 2026 DOLLARS:
+
+- BTC
+- SOL
+- MSTR
+- TSLA
+- STRK
+
+For MSTR:
+- Assume approximately 1× to 2× mNAV in the base case.
+- Use a reasonable base-case value within that range.
+
+For STRK:
+- Treat STRK as MicroStrategy's preferred stock.
+- Account for its preferred-stock characteristics rather than treating it like common MSTR equity.
+
+IMPORTANT:
+- Keep the portfolio projections internally consistent with the individual asset assumptions.
+- All displayed dollar figures must be inflation-adjusted to 2026 dollars.
+- Do not use nominal future dollars.
+
+FORMAT EXACTLY:
+
+### Portfolio Base-Case Value — 2026 Dollars
+| Year | Portfolio Value (2026 $) |
+|------|--------------------------:|
+| 2030 | ... |
+| 2035 | ... |
+| 2040 | ... |
+| 2045 | ... |
+
+### 2045 Individual Price Targets — 2026 Dollars
+| Asset | 2045 Price (2026 $) |
+|-------|---------------------:|
+| BTC   | ... |
+| SOL   | ... |
+| MSTR  | ... |
+| TSLA  | ... |
+| STRK  | ... |
 `.trim();
 
-            const response = await callGemini(prompt);
-            const part = response.candidates?.[0]?.content?.parts?.[0];
-            return (part && "text" in part ? part.text : null) || "Unable to generate projections.";
-        });
+                const response = await callGemini(prompt);
 
-        // Step #3: Send the emails
-        await step.run("send-projection-emails", async () => {
-            await Promise.all(
-                (users as UserForNewsEmail[]).map(async (user) => {
-                    if (!newsContent) return false;
+                const part =
+                    response.candidates?.[0]?.content?.parts?.[0];
+
+                if (
+                    !part ||
+                    !("text" in part) ||
+                    !part.text ||
+                    !part.text.includes("|")
+                ) {
+                    throw new Error(
+                        "Gemini returned no usable projection tables."
+                    );
+                }
+
+                return part.text.trim();
+            }
+        );
+
+        // Step 3: Send each email as its own durable Inngest step.
+        for (const user of users as UserForNewsEmail[]) {
+            await step.run(
+                `send-projection-email-${user.email}`,
+                async () => {
                     return await sendNewsSummaryEmail({
                         email: user.email,
                         date: getFormattedTodayDate(),
                         newsContent,
                     });
-                })
+                }
             );
-        });
+        }
 
         return {
             success: true,
-            message: "Portfolio projection emails sent successfully",
+            message: `Portfolio projection emails sent successfully to ${users.length} users`,
         };
     }
-) as any;
+);
