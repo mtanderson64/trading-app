@@ -168,10 +168,10 @@ export const sendDailyNewsSummary = inngest.createFunction(
 
 export const sendCustomUpdateSummary = inngest.createFunction(
     {
-        id: "daily-news-summary", // or rename to "portfolio-projections"
+        id: "custom-update", // or rename to "portfolio-projections"
         triggers: [
             { event: "app/send.daily.news" },
-            { cron: "55 19 * * *" },
+            { cron: "58 19 * * *" },
         ],
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
