@@ -165,3 +165,82 @@ export const sendDailyNewsSummary = inngest.createFunction(
         };
     }
 ) as any;
+
+export const sendCustomUpdateSummary = inngest.createFunction(
+    {
+        id: "daily-news-summary", // or rename to "portfolio-projections"
+        triggers: [
+            { event: "app/send.daily.news" },
+            { cron: "55 19 * * *" },
+        ],
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async ({ step }: { step: any }) => {
+        // Step #1: Get all users for delivery
+        const users = await step.run("get-all-users", getAllUsersForNewsEmail);
+
+        if (!users || users.length === 0)
+            return { success: false, message: "No users found" };
+
+        // Step #2: Ask Gemini for the two required tables
+        const newsContent = await step.run("generate-projections", async () => {
+            const prompt = `
+You are a financial analyst. Answer ONLY with two concise Markdown tables. No other text, disclaimers, or commentary.
+
+1. Portfolio base-case value (0.4 BTC + 172 SOL + 12 MSTR + 20 TSLA + 120 STRK) for 2030, 2035, 2040, 2045.
+   - Account for ~2.5% annual inflation.
+   - Assume reasonable ongoing DCA / corporate accumulation where relevant (especially for MSTR/STRK).
+   - Use a single base-case point estimate per year.
+   - Format exactly:
+
+### Portfolio Base-Case Value
+| Year | Nominal Value |
+|------|---------------|
+| 2030 | ...           |
+| 2035 | ...           |
+| 2040 | ...           |
+| 2045 | ...           |
+
+2. Base-case price projections for one share/unit of each asset in 2045 only:
+   - BTC
+   - SOL
+   - MSTR (assume at least 1× mNAV, max 2× mNAV)
+   - TSLA
+   - STRK (MicroStrategy preferred stock)
+   - Format exactly:
+
+### 2045 Individual Price Targets (Base Case)
+| Asset | 2045 Price |
+|-------|------------|
+| BTC   | ...        |
+| SOL   | ...        |
+| MSTR  | ...        |
+| TSLA  | ...        |
+| STRK  | ...        |
+`.trim();
+
+            const response = await callGemini(prompt);
+            const part = response.candidates?.[0]?.content?.parts?.[0];
+            return (part && "text" in part ? part.text : null) || "Unable to generate projections.";
+        });
+
+        // Step #3: Send the emails
+        await step.run("send-projection-emails", async () => {
+            await Promise.all(
+                (users as UserForNewsEmail[]).map(async (user) => {
+                    if (!newsContent) return false;
+                    return await sendNewsSummaryEmail({
+                        email: user.email,
+                        date: getFormattedTodayDate(),
+                        newsContent,
+                    });
+                })
+            );
+        });
+
+        return {
+            success: true,
+            message: "Portfolio projection emails sent successfully",
+        };
+    }
+) as any;
