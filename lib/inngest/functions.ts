@@ -170,13 +170,17 @@ export const sendCustomUpdateSummary = inngest.createFunction(
     {
         id: "daily-portfolio-projections",
         triggers: [
-            // Runs every day at 7:58 PM America/Chicago.
-            // Automatically handles CST/CDT.
-            { cron: "TZ=America/Chicago 10 15 * * *" },
+            // 7:58 PM Central Time every day.
+            // Automatically follows CST/CDT.
+            { cron: "TZ=America/Chicago 26 15 * * *" },
         ],
     },
+
     async ({ step }) => {
-        // Step 1: Get all users who should receive the email.
+        // ============================================================
+        // STEP 1 — GET USERS
+        // ============================================================
+
         const users = await step.run(
             "get-all-users",
             getAllUsersForNewsEmail
@@ -189,80 +193,109 @@ export const sendCustomUpdateSummary = inngest.createFunction(
             };
         }
 
-        // Step 2: Generate the portfolio projections once.
-        const newsContent = await step.run(
+        // ============================================================
+        // STEP 2 — GENERATE PROJECTIONS
+        // ============================================================
+
+        const projections = await step.run(
             "generate-projections",
             async () => {
                 const prompt = `
 You are a financial analyst producing a long-term portfolio projection.
 
-Answer ONLY with the two Markdown tables below.
-Do NOT provide commentary, explanations, disclaimers, bullet points, or prose outside the tables.
+Return ONLY valid JSON.
+Do NOT use Markdown.
+Do NOT use code fences.
+Do NOT include commentary or explanations outside the JSON.
 
 IMPORTANT DOLLAR CONVENTION:
-- All values MUST be expressed in CONSTANT 2026 U.S. DOLLARS.
-- Adjust all future values for approximately 2.5% annual inflation.
-- The displayed values therefore represent estimated future purchasing power in 2026 dollars, NOT nominal future dollars.
-- Do not report nominal future-dollar values.
+
+All dollar values MUST be expressed in CONSTANT 2026 U.S. DOLLARS.
+
+Assume approximately 2.5% annual inflation and convert all future
+nominal values into equivalent 2026 purchasing-power dollars.
+
+The displayed values must therefore represent 2026 dollars,
+NOT nominal future dollars.
 
 PORTFOLIO:
+
 - 0.4 BTC
 - 172 SOL
 - 12 MSTR
 - 20 TSLA
 - 120 STRK (MicroStrategy preferred stock)
 
-TABLE 1:
-Calculate the estimated total portfolio value in CONSTANT 2026 DOLLARS for:
-- 2030
-- 2035
-- 2040
-- 2045
+Calculate the BASE-CASE estimated total portfolio value in
+constant 2026 dollars for:
 
-Use a single reasonable BASE-CASE point estimate for each year.
+2030
+2035
+2040
+2045
 
-Account for reasonable long-term DCA/capital accumulation where relevant, particularly for MSTR and STRK, but do not assume unrealistic contribution amounts.
-
-TABLE 2:
-Give the BASE-CASE estimated 2045 price of one unit/share of each asset, expressed in CONSTANT 2026 DOLLARS:
-
-- BTC
-- SOL
-- MSTR
-- TSLA
-- STRK
+Also provide the BASE-CASE estimated 2045 price of one unit/share
+of each asset in constant 2026 dollars.
 
 For MSTR:
 - Assume approximately 1× to 2× mNAV in the base case.
-- Use a reasonable base-case value within that range.
+- Use a reasonable base-case assumption within that range.
 
 For STRK:
 - Treat STRK as MicroStrategy's preferred stock.
-- Account for its preferred-stock characteristics rather than treating it like common MSTR equity.
+- Account for its preferred-stock characteristics.
+- Do not treat STRK as common MSTR equity.
 
-IMPORTANT:
-- Keep the portfolio projections internally consistent with the individual asset assumptions.
-- All displayed dollar figures must be inflation-adjusted to 2026 dollars.
-- Do not use nominal future dollars.
+Use reasonable long-term accumulation/DCA assumptions where relevant,
+particularly for MSTR and STRK.
 
-FORMAT EXACTLY:
+The portfolio values should be internally consistent with the
+individual asset assumptions.
 
-### Portfolio Base-Case Value — 2026 Dollars
-| Year | Portfolio Value (2026 $) |
-|------|--------------------------:|
-| 2030 | ... |
-| 2035 | ... |
-| 2040 | ... |
-| 2045 | ... |
+Return exactly this JSON structure:
 
-### 2045 Individual Price Targets — 2026 Dollars
-| Asset | 2045 Price (2026 $) |
-|-------|---------------------:|
-| BTC   | ... |
-| SOL   | ... |
-| MSTR  | ... |
-| TSLA  | ... |
-| STRK  | ... |
+{
+  "portfolio": [
+    {
+      "year": 2030,
+      "value2026": 0
+    },
+    {
+      "year": 2035,
+      "value2026": 0
+    },
+    {
+      "year": 2040,
+      "value2026": 0
+    },
+    {
+      "year": 2045,
+      "value2026": 0
+    }
+  ],
+  "assets2045": [
+    {
+      "asset": "BTC",
+      "price2026": 0
+    },
+    {
+      "asset": "SOL",
+      "price2026": 0
+    },
+    {
+      "asset": "MSTR",
+      "price2026": 0
+    },
+    {
+      "asset": "TSLA",
+      "price2026": 0
+    },
+    {
+      "asset": "STRK",
+      "price2026": 0
+    }
+  ]
+}
 `.trim();
 
                 const response = await callGemini(prompt);
@@ -273,19 +306,507 @@ FORMAT EXACTLY:
                 if (
                     !part ||
                     !("text" in part) ||
-                    !part.text ||
-                    !part.text.includes("|")
+                    !part.text
                 ) {
                     throw new Error(
-                        "Gemini returned no usable projection tables."
+                        "Gemini returned no projection data."
                     );
                 }
 
-                return part.text.trim();
+                const rawText = part.text
+                    .trim()
+                    .replace(/^```json\s*/i, "")
+                    .replace(/^```\s*/i, "")
+                    .replace(/\s*```$/i, "")
+                    .trim();
+
+                let parsed;
+
+                try {
+                    parsed = JSON.parse(rawText);
+                } catch {
+                    throw new Error(
+                        "Gemini returned invalid JSON."
+                    );
+                }
+
+                if (
+                    !parsed?.portfolio ||
+                    !Array.isArray(parsed.portfolio) ||
+                    parsed.portfolio.length !== 4 ||
+                    !parsed?.assets2045 ||
+                    !Array.isArray(parsed.assets2045) ||
+                    parsed.assets2045.length !== 5
+                ) {
+                    throw new Error(
+                        "Gemini returned an invalid projection structure."
+                    );
+                }
+
+                return parsed;
             }
         );
 
-        // Step 3: Send each email as its own durable Inngest step.
+        // ============================================================
+        // STEP 3 — BUILD DARK-MODE HTML EMAIL
+        // ============================================================
+
+        const formatCurrency = (value: number) => {
+            return new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+                maximumFractionDigits: 0,
+            }).format(value);
+        };
+
+        const portfolioRows = projections.portfolio
+            .map(
+                (row: {
+                    year: number;
+                    value2026: number;
+                }) => `
+                    <tr>
+                        <td style="
+                            padding:14px 16px;
+                            color:#ffffff;
+                            background-color:#151b23;
+                            border-bottom:1px solid #29313d;
+                            font-size:14px;
+                            font-weight:600;
+                        ">
+                            ${row.year}
+                        </td>
+
+                        <td style="
+                            padding:14px 16px;
+                            color:#ffffff;
+                            background-color:#151b23;
+                            border-bottom:1px solid #29313d;
+                            font-size:14px;
+                            text-align:right;
+                            font-weight:600;
+                        ">
+                            ${formatCurrency(row.value2026)}
+                        </td>
+                    </tr>
+                `
+            )
+            .join("");
+
+        const assetRows = projections.assets2045
+            .map(
+                (row: {
+                    asset: string;
+                    price2026: number;
+                }) => `
+                    <tr>
+                        <td style="
+                            padding:14px 16px;
+                            color:#ffffff;
+                            background-color:#151b23;
+                            border-bottom:1px solid #29313d;
+                            font-size:14px;
+                            font-weight:600;
+                        ">
+                            ${row.asset}
+                        </td>
+
+                        <td style="
+                            padding:14px 16px;
+                            color:#ffffff;
+                            background-color:#151b23;
+                            border-bottom:1px solid #29313d;
+                            font-size:14px;
+                            text-align:right;
+                            font-weight:600;
+                        ">
+                            ${formatCurrency(row.price2026)}
+                        </td>
+                    </tr>
+                `
+            )
+            .join("");
+
+        const emailHtml = `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="color-scheme"
+        content="dark"
+    >
+
+    <meta
+        name="supported-color-schemes"
+        content="dark"
+    >
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <style>
+        html,
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            background-color: #090d12 !important;
+            color: #ffffff !important;
+        }
+
+        body {
+            background-color: #090d12 !important;
+            color: #ffffff !important;
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Helvetica,
+                Arial,
+                sans-serif;
+        }
+
+        table {
+            border-collapse: collapse !important;
+            border-spacing: 0 !important;
+        }
+
+        .email-background {
+            background-color: #090d12 !important;
+        }
+
+        .email-card {
+            background-color: #10161e !important;
+        }
+
+        .table-background {
+            background-color: #151b23 !important;
+        }
+
+        .table-header {
+            background-color: #202934 !important;
+        }
+
+        .white-text {
+            color: #ffffff !important;
+        }
+
+        .muted-text {
+            color: #9aa6b2 !important;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            html,
+            body {
+                background-color: #090d12 !important;
+                color: #ffffff !important;
+            }
+
+            .email-background {
+                background-color: #090d12 !important;
+            }
+
+            .email-card {
+                background-color: #10161e !important;
+            }
+
+            .table-background {
+                background-color: #151b23 !important;
+            }
+
+            .table-header {
+                background-color: #202934 !important;
+            }
+
+            .white-text {
+                color: #ffffff !important;
+            }
+
+            .muted-text {
+                color: #9aa6b2 !important;
+            }
+        }
+    </style>
+</head>
+
+<body
+    style="
+        margin:0;
+        padding:0;
+        background-color:#090d12 !important;
+        color:#ffffff !important;
+    "
+>
+
+    <!-- Outer background -->
+    <table
+        width="100%"
+        cellpadding="0"
+        cellspacing="0"
+        border="0"
+        class="email-background"
+        style="
+            width:100%;
+            background-color:#090d12 !important;
+        "
+    >
+        <tr>
+            <td
+                align="center"
+                style="
+                    padding:32px 16px;
+                    background-color:#090d12 !important;
+                "
+            >
+
+                <!-- Main card -->
+                <table
+                    width="680"
+                    cellpadding="0"
+                    cellspacing="0"
+                    border="0"
+                    class="email-card"
+                    style="
+                        width:100%;
+                        max-width:680px;
+                        background-color:#10161e !important;
+                        border:1px solid #29313d;
+                        border-radius:12px;
+                        overflow:hidden;
+                    "
+                >
+
+                    <!-- HEADER -->
+                    <tr>
+                        <td
+                            style="
+                                padding:30px 32px 24px;
+                                background-color:#10161e !important;
+                                border-bottom:1px solid #29313d;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    color:#ffffff !important;
+                                    font-size:25px;
+                                    line-height:32px;
+                                    font-weight:700;
+                                "
+                            >
+                                Portfolio Projections
+                            </div>
+
+                            <div
+                                style="
+                                    margin-top:7px;
+                                    color:#9aa6b2 !important;
+                                    font-size:14px;
+                                    line-height:20px;
+                                "
+                            >
+                                ${getFormattedTodayDate()}
+                            </div>
+
+                            <div
+                                style="
+                                    margin-top:14px;
+                                    color:#9aa6b2 !important;
+                                    font-size:12px;
+                                    line-height:18px;
+                                "
+                            >
+                                All values shown in constant 2026 U.S. dollars.
+                            </div>
+
+                        </td>
+                    </tr>
+
+                    <!-- CONTENT -->
+                    <tr>
+                        <td
+                            style="
+                                padding:30px 32px 36px;
+                                background-color:#10161e !important;
+                            "
+                        >
+
+                            <!-- PORTFOLIO TABLE TITLE -->
+                            <div
+                                style="
+                                    margin-bottom:14px;
+                                    color:#ffffff !important;
+                                    font-size:18px;
+                                    line-height:24px;
+                                    font-weight:700;
+                                "
+                            >
+                                Portfolio Base-Case Value
+                            </div>
+
+                            <!-- PORTFOLIO TABLE -->
+                            <table
+                                width="100%"
+                                cellpadding="0"
+                                cellspacing="0"
+                                border="0"
+                                style="
+                                    width:100%;
+                                    border:1px solid #29313d;
+                                    background-color:#151b23 !important;
+                                "
+                            >
+
+                                <tr>
+                                    <th
+                                        style="
+                                            padding:14px 16px;
+                                            color:#ffffff !important;
+                                            background-color:#202934 !important;
+                                            border-bottom:1px solid #29313d;
+                                            font-size:13px;
+                                            font-weight:700;
+                                            text-align:left;
+                                        "
+                                    >
+                                        Year
+                                    </th>
+
+                                    <th
+                                        style="
+                                            padding:14px 16px;
+                                            color:#ffffff !important;
+                                            background-color:#202934 !important;
+                                            border-bottom:1px solid #29313d;
+                                            font-size:13px;
+                                            font-weight:700;
+                                            text-align:right;
+                                        "
+                                    >
+                                        Portfolio Value (2026 $)
+                                    </th>
+                                </tr>
+
+                                ${portfolioRows}
+
+                            </table>
+
+
+                            <!-- SPACER -->
+                            <div style="height:34px;line-height:34px;">
+                                &nbsp;
+                            </div>
+
+
+                            <!-- ASSET TABLE TITLE -->
+                            <div
+                                style="
+                                    margin-bottom:14px;
+                                    color:#ffffff !important;
+                                    font-size:18px;
+                                    line-height:24px;
+                                    font-weight:700;
+                                "
+                            >
+                                2045 Individual Price Targets
+                            </div>
+
+                            <!-- ASSET TABLE -->
+                            <table
+                                width="100%"
+                                cellpadding="0"
+                                cellspacing="0"
+                                border="0"
+                                style="
+                                    width:100%;
+                                    border:1px solid #29313d;
+                                    background-color:#151b23 !important;
+                                "
+                            >
+
+                                <tr>
+                                    <th
+                                        style="
+                                            padding:14px 16px;
+                                            color:#ffffff !important;
+                                            background-color:#202934 !important;
+                                            border-bottom:1px solid #29313d;
+                                            font-size:13px;
+                                            font-weight:700;
+                                            text-align:left;
+                                        "
+                                    >
+                                        Asset
+                                    </th>
+
+                                    <th
+                                        style="
+                                            padding:14px 16px;
+                                            color:#ffffff !important;
+                                            background-color:#202934 !important;
+                                            border-bottom:1px solid #29313d;
+                                            font-size:13px;
+                                            font-weight:700;
+                                            text-align:right;
+                                        "
+                                    >
+                                        2045 Price (2026 $)
+                                    </th>
+                                </tr>
+
+                                ${assetRows}
+
+                            </table>
+
+                        </td>
+                    </tr>
+
+
+                    <!-- FOOTER -->
+                    <tr>
+                        <td
+                            style="
+                                padding:20px 32px 26px;
+                                background-color:#0d1218 !important;
+                                border-top:1px solid #29313d;
+                            "
+                        >
+
+                            <div
+                                style="
+                                    color:#7f8b98 !important;
+                                    font-size:11px;
+                                    line-height:17px;
+                                "
+                            >
+                                These are base-case estimates, not guarantees
+                                of future performance. Values are presented
+                                in constant 2026 dollars.
+                            </div>
+
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>
+`;
+
+        // ============================================================
+        // STEP 4 — SEND EMAILS
+        // ============================================================
+
         for (const user of users as UserForNewsEmail[]) {
             await step.run(
                 `send-projection-email-${user.email}`,
@@ -293,7 +814,7 @@ FORMAT EXACTLY:
                     return await sendNewsSummaryEmail({
                         email: user.email,
                         date: getFormattedTodayDate(),
-                        newsContent,
+                        newsContent: emailHtml,
                     });
                 }
             );
