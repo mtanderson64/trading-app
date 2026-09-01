@@ -2,17 +2,22 @@ import { getUserWatchlist } from "@/lib/actions/watchlist.actions";
 import { columns } from "@/components/watchlist/columns";
 import { DataTable } from "@/components/watchlist/data-table";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default async function WatchlistPage() {
-    const watchlist = await getUserWatchlist();
+    const watchlist = await getUserWatchlist(); // already enriched
 
     return (
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold text-gray-100">Watchlist</h1>
-                <p className="text-sm text-gray-400">
-                    {watchlist.length} {watchlist.length === 1 ? "stock" : "stocks"}
-                </p>
+
+                <Button
+                    asChild
+                    className="bg-yellow-500 hover:bg-yellow-400 text-black font-medium"
+                >
+                    <Link href="/search">Add Stock</Link>
+                </Button>
             </div>
 
             {watchlist.length === 0 ? (

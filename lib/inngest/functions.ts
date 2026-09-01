@@ -250,7 +250,7 @@ Use reasonable long-term accumulation/DCA assumptions where relevant,
 particularly for MSTR and STRK.
 
 The portfolio values should be internally consistent with the
-individual asset assumptions.
+individual asset assumptions. The total portfolio value in 2045 should neither exceed several millions of dollars nor be below several hundreds of thousdands of dollars.
 
 Return exactly this JSON structure:
 

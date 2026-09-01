@@ -12,6 +12,27 @@ import { auth } from "@/lib/better-auth/auth";
 import { headers } from "next/headers";
 import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions";
 
+// small helper (you can also put this in finnhub.actions.ts)
+async function getCompanyName(symbol: string): Promise<string> {
+    const token =
+        process.env.FINNHUB_API_KEY ?? process.env.NEXT_PUBLIC_FINNHUB_API_KEY ?? "";
+    if (!token) return symbol.toUpperCase();
+
+    try {
+        const res = await fetch(
+            `https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(
+                symbol
+            )}&token=${token}`,
+            { next: { revalidate: 3600 } }
+        );
+        if (!res.ok) return symbol.toUpperCase();
+        const data = await res.json();
+        return data?.name || symbol.toUpperCase();
+    } catch {
+        return symbol.toUpperCase();
+    }
+}
+
 export default async function StockDetails({ params }: StockDetailsPageProps) {
     const { symbol } = await params;
     const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
@@ -24,6 +45,9 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
         : [];
 
     const isInWatchlist = watchlistSymbols.includes(symbol.toUpperCase());
+
+    // Get the real company name
+    const companyName = await getCompanyName(symbol);
 
     return (
         <div className="flex min-h-screen p-4 md:p-6 lg:p-8">
@@ -49,7 +73,6 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
                         className="custom-chart"
                         height={600}
                     />
-
                 </div>
 
                 {/* Right column */}
@@ -57,8 +80,9 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
                     <div className="flex items-center justify-between">
                         <WatchlistButton
                             symbol={symbol.toUpperCase()}
-                            company={symbol.toUpperCase()}
+                            company={companyName}          // ← real name now
                             isInWatchlist={isInWatchlist}
+                            showTrashIcon
                         />
                     </div>
 
