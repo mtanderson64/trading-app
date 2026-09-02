@@ -3,21 +3,24 @@ import { columns } from "@/components/watchlist/columns";
 import { DataTable } from "@/components/watchlist/data-table";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import SearchCommand from "@/components/SearchCommand";
+import {searchStocks} from "@/lib/actions/finnhub.actions";
 
 export default async function WatchlistPage() {
     const watchlist = await getUserWatchlist(); // already enriched
+    const initialStocks = await searchStocks();
 
     return (
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold text-gray-100">Watchlist</h1>
 
-                <Button
-                    asChild
-                    className="bg-yellow-500 hover:bg-yellow-400 text-black font-medium"
-                >
-                    <Link href="/search">Add Stock</Link>
-                </Button>
+                <SearchCommand
+                    renderAs="button"
+                    label="Add Asset"
+                    initialStocks={initialStocks}
+                    className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-base py-5 gap-1.5 px-11"
+                />
             </div>
 
             {watchlist.length === 0 ? (

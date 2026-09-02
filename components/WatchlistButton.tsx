@@ -69,7 +69,7 @@ const WatchlistButton = ({
               watchlist-btn 
               ${added ? "watchlist-remove" : ""} 
               ${compact ? "watchlist-btn-compact" : ""}
-              inline-flex items-center justify-center gap-1.5 px-2
+              inline-flex items-center justify-center gap-1.5 
             `}
             onClick={handleClick}
             disabled={isPending}
@@ -81,7 +81,7 @@ const WatchlistButton = ({
                     viewBox="0 0 24 24"
                     strokeWidth={1.75}
                     stroke="currentColor"
-                    className="w-5 h-5 mt-0.5"
+                    className="w-5 h-5 mt-0.5 ml-0"
                 >
                     <path
                         strokeLinecap="round"

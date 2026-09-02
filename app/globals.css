@@ -155,7 +155,7 @@
     @apply w-full gap-8 grid-cols-1 md:grid-cols-2 xl:grid-cols-3;
   }
   .header {
-    @apply z-50 w-full h-[70px] bg-gray-800;
+    @apply z-[100] w-full h-[70px] bg-gray-800;
   }
   .header-wrapper {
     @apply flex justify-between items-center px-6 py-4 text-gray-500;
@@ -262,6 +262,9 @@
   }
   .watchlist-btn {
     @apply bg-yellow-500 text-base hover:bg-yellow-500 text-gray-900 w-full rounded h-11 font-semibold cursor-pointer;
+  }
+  .watchlist-btn-compact {
+    @apply bg-yellow-500 text-sm hover:bg-yellow-500 text-gray-900 w-auto rounded-md py-1.5 font-semibold cursor-pointer h-auto px-3 gap-1;
   }
   .watchlist-remove {
     @apply bg-red-500! hover:bg-red-500! text-gray-900!

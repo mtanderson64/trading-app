@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react"
 import { CommandDialog, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command"
 import {Button} from "@/components/ui/button";
-import {Loader2,  TrendingUp} from "lucide-react";
+import {Loader2, Plus, TrendingUp} from "lucide-react";
 import Link from "next/link";
 import {searchStocks} from "@/lib/actions/finnhub.actions";
 import {useDebounce} from "@/hooks/useDebounce";
 
-export default function SearchCommand({ renderAs = 'button', label = 'Add stock', initialStocks }: SearchCommandProps) {
+export default function SearchCommand({ renderAs = 'button', label = 'Add stock', initialStocks, className }: SearchCommandProps) {
     const [open, setOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
     const [loading, setLoading] = useState(false)
@@ -58,10 +58,14 @@ export default function SearchCommand({ renderAs = 'button', label = 'Add stock'
         <>
             {renderAs === 'text' ? (
                 <span onClick={() => setOpen(true)} className="search-text">
-            {label}
-          </span>
-            ): (
-                <Button onClick={() => setOpen(true)} className="search-btn">
+                    {label}
+                </span>
+            ) : (
+                <Button
+                    onClick={() => setOpen(true)}
+                    className={className ?? "search-btn"}
+                >
+                    <Plus className="h-4 w-4 stroke-3" />
                     {label}
                 </Button>
             )}
